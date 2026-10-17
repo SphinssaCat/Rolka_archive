@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Архив ролевых сюжетов</title>
+    <style>
+        :root {
+            --bg-color1: #1a1a2e;
+            --bg-color2: #16213e;
+            --bg-color3: #0f3460;
+            --bg-color4: #533483;
+            --bg-solid: #1a1a2e;
+            --font-family: 'Segoe UI', system-ui, sans-serif;
+            --text-color: #ffffff;
+            --card-bg: rgba(255, 255, 255, 0.1);
+            --card-border: rgba(255, 255, 255, 0.2);
+            --btn-color1: #6a4c93;
+            --btn-color2: #9381ff;
+            --accent-color: #9381ff;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: var(--font-family);
+            color: var(--text-color);
+            min-height: 100vh;
+            background: linear-gradient(-45deg, var(--bg-color1), var(--bg-color2), var(--bg-color3), var(--bg-color4));
+            background-size: 400% 400%;
+            animation: gradientShift 15s ease infinite;
+        }
+        @keyframes gradientShift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        #app { max-width: 1200px; margin: 0 auto; padding: 20px; position: relative; z-index: 1; }
+        h1 { text-align: center; margin: 30px 0; font-size: 2em; font-weight: 700; }
+        .cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .card {
+            background: var(--card-bg);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--card-border);
+            border-radius: 16px;
+            padding: 20px;
+            cursor: pointer;
+            transition: transform 0.2s, background 0.2s, box-shadow 0.3s;
+        }
+        .card:hover {
+            transform: translateY(-6px);
+            background: rgba(255, 255, 255, 0.15);
+            box-shadow: 0 0 20px var(--accent-color);
+        }
+        .card-preview-img {
+            width: 100%; aspect-ratio: 16/9; object-fit: cover;
+            border-radius: 12px; margin-bottom: 10px;
+        }
+        .card h3 { margin-bottom: 8px; }
+        .card p { font-size: 0.85em; opacity: 0.8; }
+        .btn {
+            position: relative; overflow: hidden;
+            padding: 12px 28px; border: none; border-radius: 12px;
+            background: linear-gradient(135deg, var(--btn-color1), var(--btn-color2));
+            color: #fff; font-size: 16px; cursor: pointer;
+            display: block; margin: 20px auto; font-family: inherit;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+        .btn:hover { transform: translateY(-2px) scale(1.03); box-shadow: 0 8px 25px rgba(0,0,0,0.3); }
+        .btn-danger { background: linear-gradient(135deg, #c9184a, #ff4d6d); }
+        .btn-save { background: linear-gradient(135deg, #2d6a4f, #52b78a); }
+        .form-overlay {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex; justify-content: center; align-items: center; z-index: 100;
+        }
+        .form-box {
+            background: #1a1a2e; border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 16px; padding: 30px; width: 90%; max-width: 500px;
+            max-height: 90vh; overflow-y: auto;
+        }
+        .form-box input[type="text"], .form-box textarea, .form-box input[type="password"] {
+            width: 100%; padding: 10px; margin-bottom: 12px;
+            border: 1px solid rgba(255,255,255,0.2); border-radius: 8px;
+            background: rgba(255,255,255,0.05); color: #fff;
+            font-size: 15px; font-family: inherit;
+        }
+        .form-box label { display: block; margin-bottom: 5px; opacity: 0.8; font-size: 14px; }
+        .form-box textarea { min-height: 100px; resize: vertical; }
+        .image-gallery {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 10px;
+            max-width: 600px; margin: 0 auto 20px;
+        }
+        .image-gallery img {
+            width: 100%; object-fit: cover; border-radius: 12px;
+            border: 1px solid rgba(255,255,255,0.15); cursor: pointer;
+        }
+        .back-btn {
+            position: fixed; top: 20px; left: 20px; z-index: 50;
+            background: none; border: 1px solid rgba(255,255,255,0.3);
+            color: #fff; border-radius: 8px; padding: 8px 16px; cursor: pointer;
+        }
+        .admin-badge {
+            position: fixed; top: 20px; right: 20px; z-index: 50;
+            background: rgba(147, 129, 255, 0.3);
+            border: 1px solid rgba(147, 129, 255, 0.5);
+            border-radius: 20px; padding: 6px 16px; font-size: 13px;
+        }
+        .empty-state { text-align: center; padding: 40px; opacity: 0.5; }
+    </style>
+</head>
+<body>
+    <div id="admin-btn-container"></div>
+    <div id="app"></div>
+
+    <script>
+        const CONFIG = {
+            owner: 'SphinssaCat,
+            repo: 'Rolka_archive',
+            branch: 'main',
+            dataFile: 'data.json',
+            adminPassword: '222745547Grr'
+        };
+
+        let state = { mode: 'list', data: null, user: { isAdmin: false, token: '' } };
+
+        function uuid() { return Date.now().toString(36) + Math.random().toString(36).substr(2, 5); }
+        function rawUrl(path) { return `https://raw.githubusercontent.com/${CONFIG.owner}/${CONFIG.repo}/${CONFIG.branch}/${path}`; }
+
+        async function fetchRaw(path) {
+            const res = await fetch(rawUrl(path));
+            if (!res.ok) throw new Error('Not found');
+            return await res.json();
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        }
+
+        function formatDescription(text) {
+            if (!text) return '<p style="opacity:0.5">Описание не задано.</p>';
+            return text.split(/\r?\n/).filter(l => l.trim() !== '').map(l => '<p>' + escapeHtml(l) + '</p>').join('');
+        }
+
+        function renderGallery(photos) {
+            if (!photos || photos.length === 0) return '';
+            return '<div class="image-gallery">' + photos.map(url => `
+                <img src="${escapeHtml(url)}" alt="Фото" onclick="window.open('${escapeHtml(url)}','_blank')" onerror="this.style.display='none'">
+            `).join('') + '</div>';
+        }
+
+        const GH = {
+            async getToken() { return localStorage.getItem('gh_token'); },
+            async setToken(token) { localStorage.setItem('gh_token', token); state.user.token = token; },
+            headers() {
+                const token = state.user.token;
+                return {
+                    'Accept': 'application/vnd.github+json',
+                    'Authorization': token ? `token ${token}` : '',
+                    'Content-Type': 'application/json'
+                };
+            },
+            async uploadImage(file, folder = 'uploads') {
+                const reader = new FileReader();
+                return new Promise((resolve, reject) => {
+                    reader.readAsDataURL(file);
+                    reader.onload = async () => {
+                        try {
+                            const blob = reader.result.split(',')[1];
+                            const ext = file.name.split('.').pop().toLowerCase();
+                            if (!['jpg','jpeg','png','gif','webp'].includes(ext)) throw new Error('Неподдерживаемый формат');
+                            const path = `${folder}/${uuid()}.${ext}`;
+                            const res = await fetch(`https://api.github.com/repos/${CONFIG.owner}/${CONFIG.repo}/contents/${path}`, {
+                                method: 'PUT',
+                                headers: this.headers(),
+                                body: JSON.stringify({ message: 'Upload image', content: blob })
+                            });
+                            if (!res.ok) throw new Error('Upload failed');
+                            const data = await res.json();
+                            resolve(rawUrl(path));
+                        } catch (e) { reject(e); }
+                    };
+                    reader.onerror = reject;
+                });
+            },
+            async updateFile(path, content) {
+                const res = await fetch(`https://api.github.com/repos/${CONFIG.owner}/${CONFIG.repo}/contents/${path}`, { headers: this.headers() });
+                if (!res.ok && res.status !== 404) throw new Error('Cannot get file info');
+                const info = res.status === 404 ? null : await res.json();
+
+                const payload = {
+                    message: 'Update file',
+                    content: btoa(unescape(encodeURIComponent(JSON.stringify(content, null, 2)))),
+                    branch: CONFIG.branch
+                };
+                if (info) payload.sha = info.sha;
+
+                const putRes = await fetch(`https://api.github.com/repos/${CONFIG.owner}/${CONFIG.repo}/contents/${path}`, {
+                    method: 'PUT',
+                    headers: this.headers(),
+                    body: JSON.stringify(payload)
+                });
+                if (!putRes.ok) {
+                    const err = await putRes.json();
+                    throw new Error(err.message || 'Update failed');
+                }
+                return true;
+            }
+        };
+
+        function renderAdminBadge() {
+            const container = document.getElementById('admin-btn-container');
+            container.innerHTML = state.user.isAdmin
+                ? `<div class="admin-badge">👑 Админ <button onclick="logout()" style="background:none;border:none;color:#fff;cursor:pointer;">Выйти</button></div>`
+                : `<button class="back-btn" onclick="route('admin-login')">Войти как админ</button>`;
+        }
+
+        function renderList() {
+            const app = document.getElementById('app');
+            if (!state.data || !state.data.stories || state.data.stories.length === 0) {
+                app.innerHTML = '<div class="empty-state">Нет сюжетов</div>';
+                return;
+            }
+            app.innerHTML = `<h1>Сюжеты</h1><div class="cards-grid"></div>`;
+            const grid = app.querySelector('.cards-grid');
+            grid.innerHTML = state.data.stories.map(s => `
+                <div class="card" onclick="openStory('${s.id}')">
+                    ${s.preview ? `<img src="${escapeHtml(s.preview)}" class="card-preview-img" onerror="this.style.display='none'">` : ''}
+                    <h3>${escapeHtml(s.title)}</h3>
+                    <p>${escapeHtml(s.description)}</p>
+                </div>
+            `).join('');
+            if (state.user.isAdmin) {
+                app.innerHTML += `<button class="btn btn-save" onclick="route('admin-panel')">+ Добавить сюжет</button>`;
+            }
+        }
+
+        function openStory(id) {
+            const story = (state.data?.stories || []).find(s => s.id === id);
+            if (!story) return;
+            document.getElementById('app').innerHTML = `
+                <button class="back-btn" onclick="route()">← Назад</button>
+                <h1>${escapeHtml(story.title)}</h1>
+                <p class="description-block"><strong>Описание:</strong> ${escapeHtml(story.description)}</p>
+                <div class="description-block">${formatDescription(story.text)}</div>
+                ${renderGallery(story.photos)}
+            `;
+        }
+
+        function renderLoginForm() {
+            document.getElementById('app').innerHTML = `
+                <h1>Вход админа</h1>
+                <div class="form-box">
+                    <label>Пароль админа</label>
+                    <input type="password" id="admin-pass" placeholder="Пароль из CONFIG">
+                    <button class="btn" onclick="checkAdminPassword()">Войти</button>
+                    <div id="login-error" style="color:#ff4d6d;margin-top:10px;text-align:center;"></div>
+                </div>
+            `;
+        }
+
+        function renderEditForm(story) {
+            const photosHtml = (story?.photos || []).map((url, i) => `
+                <div style="position:relative;display:inline-block;margin:4px;">
+                    <img src="${escapeHtml(url)}" style="width:80px;border-radius:8px;" onerror="this.style.display='none'">
+                    <button onclick="removePhoto(${i})" style="position:absolute;top:-6px;right:-6px;background:#ff4d6d;border:none;color:#fff;border-radius:50%;width:20px;height:20px;">×</button>
+                </div>
+            `).join('');
+
+            document.getElementById('app').innerHTML = `
+                <button class="back-btn" onclick="route()">← Назад</button>
+                <h1>${story ? 'Редактировать сюжет' : 'Новый сюжет'}</h1>
+                <div class="form-box">
+                    <label>Название</label>
+                    <input type="text" id="story-title" placeholder="Например: Пролог: первая встреча">
+                    <label>Краткое описание (для карточки)</label>
+                    <input type="text" id="story-desc" placeholder="1–2 предложения">
+                    <label>Полный текст сюжета</label>
+                    <textarea id="story-text" placeholder="Здесь весь текст главы..."></textarea>
+                    <label>Превью (картинка для карточки)</label>
+                    <input type="file" id="story-preview-file" accept="image/*">
+                    <label>Дополнительные фото к сюжету</label>
+                    <input type="file" id="story-photos-files" multiple accept="image/*">
+                    
+                    <div style="margin-top:10px;font-size:13px;opacity:0.7;">
+                        Загруженные фото появятся ниже:
+                    </div>
+                    <div id="uploaded-photos-display" style="margin:10px 0;display:flex;flex-wrap:wrap;gap:8px;"></div>
+
+                    ${story ? `<button class="btn btn-danger" onclick="deleteStory('${story.id}')">Удалить сюжет</button>` : ''}
+                    <button class="btn btn-save" onclick="saveStory()">${story ? 'Сохранить изменения' : 'Создать сюжет'}</button>
+                </div>
+            `;
+            // Если есть существующий сюжет — заполняем поля
+            if (story) {
+                document.getElementById('story-title').value = story.title;
+                document.getElementById('story-desc').value = story.description;
+                document.getElementById('story-text').value = story.text;
+            }
+            state.editingStory = story || { id: null, photos: [] };
+        }
+
+        function removePhoto(index) {
+            const display = document.getElementById('uploaded-photos-display');
+            const current = state.editingStory.photos || [];
+            // Удаляем из массива
+            state.editingStory.photos = current.filter((_, i) => i !== index);
+            renderPhotosInEditor();
+        }
+
+        function renderPhotosInEditor() {
+            const container = document.getElementById('uploaded-photos-display');
+            container.innerHTML = (state.editingStory.photos || []).map((url, i) => `
+                <div style="position:relative;display:inline-block;margin:4px;">
+                    <img src="${escapeHtml(url)}" style="width:80px;border-radius:8px;" onerror="this.style.display='none'">
+                    <button onclick="removePhoto(${i})" style="position:absolute;top:-6px;right:-6px;background:#ff4d6d;border:none;color:#fff;border-radius:50%;width:20px;height:20px;">×</button>
+                </div>
+            `).join('');
+        }
+
+        async function saveStory() {
+            const title = document.getElementById('story-title').value.trim();
+            const desc = document.getElementById('story-desc').value.trim();
+            const text = document.getElementById('story-text').value.trim();
+            if (!title) { alert('Нужно название!'); return; }
+
+            // Обработка новых загруженных файлов
+            const previewFile = document.getElementById('story-preview-file').files[0];
+            const photosFiles = Array.from(document.getElementById('story-photos-files').files);
+
+            let previewUrl = state.editingStory.preview || '';
+            if (previewFile) {
+                previewUrl = await GH.uploadImage(previewFile, 'images');
+            }
+
+            const newPhotos = [];
+            for (const f of photosFiles) {
+                const url = await GH.uploadImage(f, 'images');
+                newPhotos.push(url);
+            }
+
+            // Объединяем старые и новые фото
+            const allPhotos = [... (state.editingStory.photos || []), ...newPhotos];
+
+            const story = {
+                id: state.editingStory.id || uuid(),
+                title,
+                description: desc,
+                text,
+                preview: previewUrl,
+                photos: allPhotos
+            };
+
+            if (!state.data.stories) state.data.stories = [];
+
+            // Заменяем или добавляем
+            const existingIndex = state.data.stories.findIndex(s => s.id === story.id);
+            if (existingIndex >= 0) {
+                state.data.stories[existingIndex] = story;
+            } else {
+                state.data.stories.push(story);
+            }
+
+            try {
+                await GH.updateFile(CONFIG.dataFile, state.data);
+                alert('Сохранено в репозитории!');
+                route();
+            } catch (e) {
+                console.error(e);
+                alert('Ошибка при сохранении: ' + e.message);
+            }
+        }
+
+        async function deleteStory(id) {
+            if (!confirm('Удалить сюжет? Это нельзя отменить.')) return;
+            state.data.stories = (state.data.stories || []).filter(s => s.id !== id);
+            try {
+                await GH.updateFile(CONFIG.dataFile, state.data);
+                alert('Удалено');
+                route();
+            } catch (e) {
+                alert('Ошибка: ' + e.message);
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem('gh_token');
+            state.user.isAdmin = false;
+            state.user.token = '';
+            route();
+        }
+
+        function route(mode = state.mode) {
+            state.mode = mode;
+            switch (mode) {
+                case 'admin-login': renderLoginForm(); break;
+                case 'admin-panel': renderEditForm(null); break;
+                case 'list': renderList(); break;
+                default: renderList();
+            }
+            renderAdminBadge();
+        }
+
+        async function checkAdminPassword() {
+            const input = document.getElementById('admin-pass');
+            if (input.value === CONFIG.adminPassword) {
+                // Пароль совпал — теперь просим GitHub Token
+                document.getElementById('app').innerHTML = `
+                    <h1>Вход админа</h1>
+                    <div class="form-box">
+                        <p style="opacity:0.8;margin-bottom:12px;">Теперь введите ваш GitHub Personal Access Token с правами <b>repo</b>.</p>
+                        <label>GitHub Token</label>
+                        <input type="password" id="gh-token" placeholder="ghp_...">
+                        <button class="btn" onclick="finishAdminLogin()">Войти окончательно</button>
+                        <div style="font-size:12px;opacity:0.6;margin-top:8px;">Как получить токен: Settings → Developer settings → Personal access tokens → scopes: repo</div>
+                    </div>
+                `;
+            } else {
+                document.getElementById('login-error').innerText = 'Неверный пароль';
+            }
+        }
+
+        async function finishAdminLogin() {
+            const token = document.getElementById('gh-token').value.trim();
+            try {
+                await GH.setToken(token);
+                // Простая проверка токена
+                const res = await fetch('https://api.github.com/user', { headers: GH.headers() });
+                if (!res.ok) throw new Error('Неверный токен');
+                state.user.isAdmin = true;
+                route('list');
+            } catch (e) {
+                alert('Ошибка входа: ' + e.message);
+            }
+        }
+
+        // Инициализация
+        (async () => {
+            try {
+                state.data = await fetchRaw(CONFIG.dataFile);
+            } catch (e) {
+                // Если data.json нет — создадим пустой шаблон
+                state.data = { stories: [] };
+            }
+            route('list');
+        })();
+    </script>
+</body>
+</html>
