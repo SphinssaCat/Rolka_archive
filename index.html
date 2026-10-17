@@ -120,7 +120,7 @@
 
     <script>
         const CONFIG = {
-            owner: 'SphinssaCat,
+            owner: 'SphinssaCat',
             repo: 'Rolka_archive',
             branch: 'main',
             dataFile: 'data.json',
@@ -217,7 +217,7 @@
         function renderAdminBadge() {
             const container = document.getElementById('admin-btn-container');
             container.innerHTML = state.user.isAdmin
-                ? `<div class="admin-badge">👑 Админ <button onclick="logout()" style="background:none;border:none;color:#fff;cursor:pointer;">Выйти</button></div>`
+                ? `<div class="admin-badge">✨️ Админ <button onclick="logout()" style="background:none;border:none;color:#fff;cursor:pointer;">Выйти</button></div>`
                 : `<button class="back-btn" onclick="route('admin-login')">Войти как админ</button>`;
         }
 
