@@ -10,7 +10,6 @@
             --bg-color2: #16213e;
             --bg-color3: #0f3460;
             --bg-color4: #533483;
-            --bg-solid: #1a1a2e;
             --font-family: 'Segoe UI', system-ui, sans-serif;
             --text-color: #ffffff;
             --card-bg: rgba(255, 255, 255, 0.1);
@@ -72,11 +71,6 @@
         .btn:hover { transform: translateY(-2px) scale(1.03); box-shadow: 0 8px 25px rgba(0,0,0,0.3); }
         .btn-danger { background: linear-gradient(135deg, #c9184a, #ff4d6d); }
         .btn-save { background: linear-gradient(135deg, #2d6a4f, #52b78a); }
-        .form-overlay {
-            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(0, 0, 0, 0.7);
-            display: flex; justify-content: center; align-items: center; z-index: 100;
-        }
         .form-box {
             background: #1a1a2e; border: 1px solid rgba(255,255,255,0.2);
             border-radius: 16px; padding: 30px; width: 90%; max-width: 500px;
@@ -166,7 +160,7 @@
                     'Content-Type': 'application/json'
                 };
             },
-            async uploadImage(file, folder = 'uploads') {
+            async uploadImage(file, folder = 'images') {
                 const reader = new FileReader();
                 return new Promise((resolve, reject) => {
                     reader.readAsDataURL(file);
@@ -217,27 +211,33 @@
         function renderAdminBadge() {
             const container = document.getElementById('admin-btn-container');
             container.innerHTML = state.user.isAdmin
-                ? `<div class="admin-badge">✨️ Админ <button onclick="logout()" style="background:none;border:none;color:#fff;cursor:pointer;">Выйти</button></div>`
+                ? `<div class="admin-badge">👑 Админ <button onclick="logout()" style="background:none;border:none;color:#fff;cursor:pointer;">Выйти</button></div>`
                 : `<button class="back-btn" onclick="route('admin-login')">Войти как админ</button>`;
         }
 
         function renderList() {
             const app = document.getElementById('app');
+            app.innerHTML = '';
+
             if (!state.data || !state.data.stories || state.data.stories.length === 0) {
                 app.innerHTML = '<div class="empty-state">Нет сюжетов</div>';
-                return;
+            } else {
+                app.innerHTML += `<h1>Сюжеты</h1><div class="cards-grid"></div>`;
+                const grid = app.querySelector('.cards-grid');
+                grid.innerHTML = state.data.stories.map(s => `
+                    <div class="card" onclick="openStory('${s.id}')">
+                        ${s.preview ? `<img src="${escapeHtml(s.preview)}" class="card-preview-img" onerror="this.style.display='none'">` : ''}
+                        <h3>${escapeHtml(s.title)}</h3>
+                        <p>${escapeHtml(s.description)}</p>
+                    </div>
+                `).join('');
             }
-            app.innerHTML = `<h1>Сюжеты</h1><div class="cards-grid"></div>`;
-            const grid = app.querySelector('.cards-grid');
-            grid.innerHTML = state.data.stories.map(s => `
-                <div class="card" onclick="openStory('${s.id}')">
-                    ${s.preview ? `<img src="${escapeHtml(s.preview)}" class="card-preview-img" onerror="this.style.display='none'">` : ''}
-                    <h3>${escapeHtml(s.title)}</h3>
-                    <p>${escapeHtml(s.description)}</p>
-                </div>
-            `).join('');
+
             if (state.user.isAdmin) {
-                app.innerHTML += `<button class="btn btn-save" onclick="route('admin-panel')">+ Добавить сюжет</button>`;
+                const btnContainer = document.createElement('div');
+                btnContainer.style.marginTop = '20px';
+                btnContainer.innerHTML = `<button class="btn btn-save" onclick="route('admin-panel')">+ Добавить сюжет</button>`;
+                app.appendChild(btnContainer);
             }
         }
 
@@ -281,42 +281,56 @@
                     <input type="text" id="story-title" placeholder="Например: Пролог: первая встреча">
                     <label>Краткое описание (для карточки)</label>
                     <input type="text" id="story-desc" placeholder="1–2 предложения">
-                    <label>Полный текст сюжета</label>
-                    <textarea id="story-text" placeholder="Здесь весь текст главы..."></textarea>
-                    <label>Превью (картинка для карточки)</label>
-                    <input type="file" id="story-preview-file" accept="image/*">
-                    <label>Дополнительные фото к сюжету</label>
-                    <input type="file" id="story-photos-files" multiple accept="image/*">
-                    
-                    <div style="margin-top:10px;font-size:13px;opacity:0.7;">
-                        Загруженные фото появятся ниже:
-                    </div>
-                    <div id="uploaded-photos-display" style="margin:10px 0;display:flex;flex-wrap:wrap;gap:8px;"></div>
-
-                    ${story ? `<button class="btn btn-danger" onclick="deleteStory('${story.id}')">Удалить сюжет</button>` : ''}
+                    <label 
+                    <textarea id="story-text" placeholder="Полный текст сюжета..."></textarea>
+                    <label>Фото (можно загрузить несколько)</label>
+                    <input type="file" id="story-photos" multiple accept="image/*" style="margin-bottom:10px;">
+                    <div id="uploaded-photos-preview" style="margin-bottom:15px;">${photosHtml}</div>
+                    ${story ? `<button class="btn btn-danger" onclick="deleteStory('${story.id}')" style="width:100%;margin-top:10px;">Удалить сюжет</button>` : ''}
                     <button class="btn btn-save" onclick="saveStory()">${story ? 'Сохранить изменения' : 'Создать сюжет'}</button>
                 </div>
             `;
-            // Если есть существующий сюжет — заполняем поля
+
             if (story) {
                 document.getElementById('story-title').value = story.title;
                 document.getElementById('story-desc').value = story.description;
-                document.getElementById('story-text').value = story.text;
+                document.getElementById('story-text').value = story.text || '';
             }
-            state.editingStory = story || { id: null, photos: [] };
         }
 
-        function removePhoto(index) {
-            const display = document.getElementById('uploaded-photos-display');
-            const current = state.editingStory.photos || [];
-            // Удаляем из массива
-            state.editingStory.photos = current.filter((_, i) => i !== index);
-            renderPhotosInEditor();
-        }
+        let tempPhotos = []; // храним загруженные файлы до сохранения
 
-        function renderPhotosInEditor() {
-            const container = document.getElementById('uploaded-photos-display');
-            container.innerHTML = (state.editingStory.photos || []).map((url, i) => `
+        document.addEventListener('DOMContentLoaded', () => {
+            const photosInput = document.getElementById('story-photos');
+            if (photosInput) {
+                photosInput.addEventListener('change', async (e) => {
+                    const files = Array.from(e.target.files);
+                    if (files.length === 0) return;
+
+                    const previewContainer = document.getElementById('uploaded-photos-preview');
+                    // показываем индикатор загрузки
+                    previewContainer.innerHTML = '<p style="color:#9381ff;">Загружаем фото…</p>';
+
+                    try {
+                        for (const file of files) {
+                            const url = await GH.uploadImage(file);
+                            tempPhotos.push(url);
+                        }
+                        renderPhotosPreview();
+                    } catch (err) {
+                        console.error(err);
+                        alert('Ошибка загрузки фото: ' + err.message);
+                        renderPhotosPreview();
+                    } finally {
+                        e.target.value = ''; // сброс инпута
+                    }
+                });
+            }
+        });
+
+        function renderPhotosPreview() {
+            const container = document.getElementById('uploaded-photos-preview');
+            container.innerHTML = tempPhotos.map((url, i) => `
                 <div style="position:relative;display:inline-block;margin:4px;">
                     <img src="${escapeHtml(url)}" style="width:80px;border-radius:8px;" onerror="this.style.display='none'">
                     <button onclick="removePhoto(${i})" style="position:absolute;top:-6px;right:-6px;background:#ff4d6d;border:none;color:#fff;border-radius:50%;width:20px;height:20px;">×</button>
@@ -324,128 +338,131 @@
             `).join('');
         }
 
+        function removePhoto(index) {
+            tempPhotos.splice(index, 1);
+            renderPhotosPreview();
+        }
+
         async function saveStory() {
             const title = document.getElementById('story-title').value.trim();
             const desc = document.getElementById('story-desc').value.trim();
             const text = document.getElementById('story-text').value.trim();
-            if (!title) { alert('Нужно название!'); return; }
 
-            // Обработка новых загруженных файлов
-            const previewFile = document.getElementById('story-preview-file').files[0];
-            const photosFiles = Array.from(document.getElementById('story-photos-files').files);
-
-            let previewUrl = state.editingStory.preview || '';
-            if (previewFile) {
-                previewUrl = await GH.uploadImage(previewFile, 'images');
-            }
-
-            const newPhotos = [];
-            for (const f of photosFiles) {
-                const url = await GH.uploadImage(f, 'images');
-                newPhotos.push(url);
-            }
-
-            // Объединяем старые и новые фото
-            const allPhotos = [... (state.editingStory.photos || []), ...newPhotos];
-
-            const story = {
-                id: state.editingStory.id || uuid(),
-                title,
-                description: desc,
-                text,
-                preview: previewUrl,
-                photos: allPhotos
-            };
-
-            if (!state.data.stories) state.data.stories = [];
-
-            // Заменяем или добавляем
-            const existingIndex = state.data.stories.findIndex(s => s.id === story.id);
-            if (existingIndex >= 0) {
-                state.data.stories[existingIndex] = story;
-            } else {
-                state.data.stories.push(story);
+            if (!title || !desc) {
+                alert('Название и краткое описание обязательны');
+                return;
             }
 
             try {
+                const allPhotos = [
+                    ...(state.data.stories.find(s => s.id === state.editingId)?.photos || []),
+                    ...tempPhotos
+                ];
+
+                const newStory = {
+                    id: state.editingId || uuid(),
+                    title,
+                    description: desc,
+                    text,
+                    photos: allPhotos,
+                    preview: allPhotos[0] || ''
+                };
+
+                let stories = state.data.stories || [];
+                const existingIndex = stories.findIndex(s => s.id === newStory.id);
+                if (existingIndex >= 0) {
+                    stories[existingIndex] = newStory;
+                } else {
+                    stories.unshift(newStory); // новые сверху
+                }
+
+                state.data = { stories };
                 await GH.updateFile(CONFIG.dataFile, state.data);
-                alert('Сохранено в репозитории!');
+
+                tempPhotos = [];
                 route();
+                alert('Сюжет сохранён!');
             } catch (e) {
                 console.error(e);
-                alert('Ошибка при сохранении: ' + e.message);
+                alert('Ошибка сохранения: ' + e.message);
             }
         }
 
         async function deleteStory(id) {
-            if (!confirm('Удалить сюжет? Это нельзя отменить.')) return;
-            state.data.stories = (state.data.stories || []).filter(s => s.id !== id);
+            if (!confirm('Вы уверены, что хотите удалить этот сюжет?')) return;
             try {
+                state.data.stories = (state.data.stories || []).filter(s => s.id !== id);
                 await GH.updateFile(CONFIG.dataFile, state.data);
-                alert('Удалено');
                 route();
+                alert('Сюжет удалён');
             } catch (e) {
-                alert('Ошибка: ' + e.message);
+                console.error(e);
+                alert('Ошибка удаления: ' + e.message);
+            }
+        }
+
+        function checkAdminPassword() {
+            const pass = document.getElementById('admin-pass').value;
+            if (pass === CONFIG.adminPassword) {
+                state.user.isAdmin = true;
+                renderAdminBadge();
+                route(); // вернуться к списку
+            } else {
+                document.getElementById('login-error').textContent = 'Неверный пароль';
             }
         }
 
         function logout() {
-            localStorage.removeItem('gh_token');
             state.user.isAdmin = false;
             state.user.token = '';
+            localStorage.removeItem('gh_token');
+            renderAdminBadge();
             route();
         }
 
-        function route(mode = state.mode) {
+        async function tryAutoLogin() {
+            const savedToken = localStorage.getItem('gh_token');
+            if (savedToken) {
+                await GH.setToken(savedToken);
+                try {
+                    const res = await fetch('https://api.github.com/user', { headers: GH.headers() });
+                    if (res.ok) {
+                        state.user.isAdmin = true;
+                        renderAdminBadge();
+                    } else {
+                        localStorage.removeItem('gh_token');
+                    }
+                } catch (e) {
+                    console.warn('Автовход не удался', e);
+                    localStorage.removeItem('gh_token');
+                }
+            }
+        }
+
+        function route(mode = 'list') {
             state.mode = mode;
             switch (mode) {
-                case 'admin-login': renderLoginForm(); break;
-                case 'admin-panel': renderEditForm(null); break;
-                case 'list': renderList(); break;
-                default: renderList();
-            }
-            renderAdminBadge();
-        }
-
-        async function checkAdminPassword() {
-            const input = document.getElementById('admin-pass');
-            if (input.value === CONFIG.adminPassword) {
-                // Пароль совпал — теперь просим GitHub Token
-                document.getElementById('app').innerHTML = `
-                    <h1>Вход админа</h1>
-                    <div class="form-box">
-                        <p style="opacity:0.8;margin-bottom:12px;">Теперь введите ваш GitHub Personal Access Token с правами <b>repo</b>.</p>
-                        <label>GitHub Token</label>
-                        <input type="password" id="gh-token" placeholder="ghp_...">
-                        <button class="btn" onclick="finishAdminLogin()">Войти окончательно</button>
-                        <div style="font-size:12px;opacity:0.6;margin-top:8px;">Как получить токен: Settings → Developer settings → Personal access tokens → scopes: repo</div>
-                    </div>
-                `;
-            } else {
-                document.getElementById('login-error').innerText = 'Неверный пароль';
+                case 'list':
+                    renderList();
+                    break;
+                case 'admin-login':
+                    renderLoginForm();
+                    break;
+                case 'admin-panel':
+                    state.editingId = null;
+                    renderEditForm(null);
+                    break;
+                default:
+                    renderList();
             }
         }
 
-        async function finishAdminLogin() {
-            const token = document.getElementById('gh-token').value.trim();
-            try {
-                await GH.setToken(token);
-                // Простая проверка токена
-                const res = await fetch('https://api.github.com/user', { headers: GH.headers() });
-                if (!res.ok) throw new Error('Неверный токен');
-                state.user.isAdmin = true;
-                route('list');
-            } catch (e) {
-                alert('Ошибка входа: ' + e.message);
-            }
-        }
-
-        // Инициализация
         (async () => {
+            await tryAutoLogin();
             try {
                 state.data = await fetchRaw(CONFIG.dataFile);
             } catch (e) {
-                // Если data.json нет — создадим пустой шаблон
+                console.warn('data.json не найден, создаём пустой', e);
                 state.data = { stories: [] };
             }
             route('list');
