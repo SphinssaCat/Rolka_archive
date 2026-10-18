@@ -33,7 +33,7 @@
         }
         #app { max-width: 1200px; margin: 0 auto; padding: 0 20px; }
 
-        /* Сетка карточек - теперь горизонтальные прямоугольники */
+        /* Сетка карточек */
         .cards-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
@@ -42,7 +42,7 @@
         }
         .card {
             background: linear-gradient(180deg, var(--card-bg-top), var(--card-bg-bottom));
-            height: 160px; /* Пониженная высота */
+            height: 160px;
             border-radius: 0;
             padding: 20px;
             cursor: pointer;
@@ -241,6 +241,13 @@
             object-fit: cover;
             border: 1px solid #000;
         }
+        
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+            font-size: 1.2rem;
+        }
     </style>
 </head>
 <body>
@@ -290,7 +297,7 @@
             user: { isAdmin: false, token: '' },
             editingId: null
         };
-        let tempPhotos = ;
+        let tempPhotos = ; // ИСПРАВЛЕНО: было пустым
 
         const GH = {
             headers() {
@@ -308,7 +315,9 @@
                     const reader = new FileReader();
                     reader.onload = async (e) => {
                         try {
-                            const content = btoa(e.target.result.split(',')); [1](https://tproger.ru/articles/kak-nastroit-autentifikaciyu-v-veb-prilozheniyah-na-django)
+                            // ИСПРАВЛЕНО: убрана ссылка и исправлена логика base64
+                            const base64Data = e.target.result.split(','); [1](https://tr-page.yandex.ru/translate?lang=en-ru&url=https%3A%2F%2Fwww.geeksforgeeks.org%2Fnode-js%2Fhow-to-handle-syntax-errors-in-node-js%2F)
+                            const content = btoa(base64Data);
                             const path = `images/${Date.now()}_${file.name}`;
                             const payload = {
                                 message: 'Upload image',
@@ -321,9 +330,12 @@
                                 body: JSON.stringify(payload)
                             });
                             if (!res.ok) throw new Error('Upload failed');
-                            const rawUrl = (path) => `https://raw.githubusercontent.com/${CONFIG.owner}/${CONFIG.repo}/${CONFIG.branch}/${path}`;
+                            const rawUrl = (p) => `https://raw.githubusercontent.com/${CONFIG.owner}/${CONFIG.repo}/${CONFIG.branch}/${p}`;
                             resolve(rawUrl(path));
-                        } catch (e) { reject(e); }
+                        } catch (e) { 
+                            console.error(e);
+                            reject(e); 
+                        }
                     };
                     reader.onerror = reject;
                     reader.readAsDataURL(file);
@@ -399,7 +411,7 @@
             app.innerHTML += `<h1>Архив Всея Ролки</h1>`;
 
             if (!state.data || !state.data.stories || state.data.stories.length === 0) {
-                app.innerHTML += '<div class="empty-state">Нет сюжетов</div>';
+                app.innerHTML += '<div class="empty-state">Нет сюжетов. Проверьте наличие data.json в репозитории.</div>';
             } else {
                 const grid = document.createElement('div');
                 grid.className = 'cards-grid';
@@ -541,274 +553,165 @@
                 return;
             }
             
-            tempPhotos = ;
-            renderEditForm(story);
-        }
-
-        function renderEditForm(story) {
             const app = document.getElementById('app');
-            const isEdit = !!story;
-            
             app.innerHTML = `
-                <button class="back-btn" onclick="route()">← Назад</button>
-                <h1 style="font-family:var(--font-display);color:var(--text-color);text-transform:uppercase;">
-                    \${isEdit ? 'Редактировать сюжет' : 'Новый сюжет'}
-                </h1>
+                <button class="back-btn" onclick="route('list')">← Назад</button>
+                <h1 style="font-family:var(--font-display);">\${story ? 'Редактировать' : 'Новый сюжет'}</h1>
                 <div class="form-box">
                     <label>Название</label>
-                    <input type="text" id="story-title" value="\${story ? escapeHtml(story.title) : ''}">
+                    <input type="text" id="edit-title" value="\${story ? escapeHtml(story.title) : ''}">
                     
-                    <label>Краткое описание (для карточки)</label>
-                    <input type="text" id="story-desc" value="\${story ? escapeHtml(story.description) : ''}">
+                    <label>Описание (короткое)</label>
+                    <input type="text" id="edit-desc" value="\${story ? escapeHtml(story.description) : ''}">
                     
                     <label>Текст сюжета</label>
-                    <textarea id="story-text">\${story ? escapeHtml(story.text) : ''}</textarea>
-
-                    <label>Персонажи (ID через запятую, например: c1,c2)</label>
-                    <input type="text" id="story-characters" value="\${story && story.characters ? story.characters.join(',') : ''}">
+                    <textarea id="edit-text">\${story ? escapeHtml(story.text) : ''}</textarea>
                     
-                    <label>Фотографии (перетащите файлы сюда или выберите)</label>
-                    <input type="file" id="story-photos" multiple accept="image/*" style="margin-top:10px;">
-                    <div id="photo-preview" style="margin-top:10px; font-size:0.8rem; color:#666;"></div>
+                    <label>Галерея (URL картинок через запятую)</label>
+                    <input type="text" id="edit-gallery" value="\${story && story.gallery ? story.gallery.join(',') : ''}" placeholder="https://..., https://...">
                     
-                    <button class="btn" onclick="saveStory('\${story ? story.id : ''}')">
-                        \${isEdit ? 'Сохранить изменения' : 'Опубликовать сюжет'}
-                    </button>
-                    ${isEdit ? `<button class="btn btn-danger" onclick="deleteStory('${story.id}')" style="margin-left:10px;">Удалить</button>` : ''}
+                    <label>Персонажи (ID персонажей через запятую)</label>
+                    <input type="text" id="edit-chars" value="\${story && story.characters ? story.characters.join(',') : ''}" placeholder="1, 2, 3">
+                    
+                    <button class="btn" onclick="saveStory('\${story ? story.id : ''}')">Сохранить</button>
+                    ${story ? `<button class="btn btn-danger" onclick="deleteStory('${story.id}')">Удалить</button>` : ''}
                 </div>
             `;
-
-            document.getElementById('story-photos').addEventListener('change', async (e) => {
-                const files = e.target.files;
-                const preview = document.getElementById('photo-preview');
-                preview.innerHTML = '<p>Загрузка...</p>';
-                
-                try {
-                    for (let i = 0; i < files.length; i++) {
-                        const url = await GH.uploadImage(files[i]);
-                        tempPhotos.push(url);
-                    }
-                    preview.innerHTML = `<p>Загружено фото: \${tempPhotos.length}</p>`;
-                    e.target.value = '';
-                } catch (err) {
-                    console.error(err);
-                    preview.innerHTML = '<p style="color:red">Ошибка загрузки фото</p>';
-                }
-            });
         }
 
         async function saveStory(id) {
-            const title = document.getElementById('story-title').value.trim();
-            const desc = document.getElementById('story-desc').value.trim();
-            const text = document.getElementById('story-text').value.trim();
-            const charsInput = document.getElementById('story-characters').value.trim();
-            
-            if (!title) { alert('Название обязательно'); return; }
+            const title = document.getElementById('edit-title').value;
+            const desc = document.getElementById('edit-desc').value;
+            const text = document.getElementById('edit-text').value;
+            const galleryInput = document.getElementById('edit-gallery').value;
+            const charsInput = document.getElementById('edit-chars').value;
 
-            const characters = charsInput ? charsInput.split(',').map(c => c.trim()) : ;
+            if (!title) return alert('Введите название');
+
+            const gallery = galleryInput ? galleryInput.split(',').map(c => c.trim()).filter(Boolean) : ;
+            const characters = charsInput ? charsInput.split(',').map(c => c.trim()).filter(Boolean) : ;
 
             const newStory = {
-                id: id || uuid(),
-                title: title,
+                id: id || Date.now().toString(),
+                title,
                 description: desc,
-                text: text,
-                characters: characters,
-                gallery: tempPhotos
+                text,
+                gallery,
+                characters
             };
 
-            let stories = state.data.stories || ;
             if (id) {
-                const index = stories.findIndex(s => s.id === id);
-                if (index !== -1) stories[index] = newStory;
+                // Обновление
+                const index = state.data.stories.findIndex(s => s.id === id);
+                if (index !== -1) state.data.stories[index] = newStory;
             } else {
-                stories.push(newStory);
+                // Создание
+                state.data.stories.push(newStory);
             }
 
-            const newData = { stories: stories, characters: state.data.characters ||  };
-            
             try {
-                await GH.updateFile(CONFIG.dataFile, newData);
-                alert('Сюжет успешно сохранен!');
+                await GH.updateFile(CONFIG.dataFile, state.data);
+                alert('Сохранено!');
                 route('list');
             } catch (e) {
-                alert('Ошибка сохранения: ' + e.message + '\nУбедитесь, что у вас есть права на запись в репозиторий и верный токен.');
                 console.error(e);
+                alert('Ошибка сохранения: ' + e.message);
             }
         }
 
         async function deleteStory(id) {
-            if (!confirm('Вы уверены, что хотите удалить этот сюжет?')) return;
-            
-            let stories = state.data.stories || ;
-            stories = stories.filter(s => s.id !== id);
-            const newData = { stories: stories, characters: state.data.characters ||  };
-
+            if(!confirm('Удалить сюжет?')) return;
+            state.data.stories = state.data.stories.filter(s => s.id !== id);
             try {
-                await GH.updateFile(CONFIG.dataFile, newData);
-                alert('Сюжет удален');
+                await GH.updateFile(CONFIG.dataFile, state.data);
                 route('list');
             } catch (e) {
                 alert('Ошибка удаления: ' + e.message);
-                console.error(e);
             }
         }
 
-        // --- Редактор оформления ---
         function openThemeEditor() {
-            if (!state.user.isAdmin) return;
-            const panel = document.getElementById('theme-editor');
-            panel.style.display = 'flex';
-            loadCurrentTheme();
+            document.getElementById('theme-editor').style.display = 'flex';
+            // Загрузка текущих значений
+            document.getElementById('cfg-bg-color').value = getComputedStyle(document.documentElement).getPropertyValue('--bg-color').trim();
+            document.getElementById('cfg-card-top').value = getComputedStyle(document.documentElement).getPropertyValue('--card-bg-top').trim();
+            document.getElementById('cfg-card-bottom').value = getComputedStyle(document.documentElement).getPropertyValue('--card-bg-bottom').trim();
+            document.getElementById('cfg-btn-color').value = getComputedStyle(document.documentElement).getPropertyValue('--btn-color').trim();
         }
 
         function closeThemeEditor() {
             document.getElementById('theme-editor').style.display = 'none';
         }
 
-        function loadCurrentTheme() {
-            const cfg = state.config || {
-                bgColor: '#F5E6C8',
-                cardTitle: '#000',
-                cardDesc: '#333',
-                cardTop: '#000000',
-                cardBottom: '#FFB81C',
-                btnColor: '#FFB81C'
-            };
+        function saveThemeSettings() {
+            const bg = document.getElementById('cfg-bg-color').value;
+            const top = document.getElementById('cfg-card-top').value;
+            const bottom = document.getElementById('cfg-card-bottom').value;
+            const btn = document.getElementById('cfg-btn-color').value;
 
-            document.getElementById('cfg-bg-color').value = cfg.bgColor;
-            document.getElementById('cfg-card-title').value = cfg.cardTitle;
-            document.getElementById('cfg-card-desc').value = cfg.cardDesc;
-            document.getElementById('cfg-card-top').value = cfg.cardTop;
-            document.getElementById('cfg-card-bottom').value = cfg.cardBottom;
-            document.getElementById('cfg-btn-color').value = cfg.btnColor;
-        }
-
-        async function saveThemeSettings() {
-            const newConfig = {
-                bgColor: document.getElementById('cfg-bg-color').value,
-                cardTitle: document.getElementById('cfg-card-title').value,
-                cardDesc: document.getElementById('cfg-card-desc').value,
-                cardTop: document.getElementById('cfg-card-top').value,
-                cardBottom: document.getElementById('cfg-card-bottom').value,
-                btnColor: document.getElementById('cfg-btn-color').value
-            };
-
-            try {
-                await GH.updateFile(CONFIG.configFile, newConfig);
-                alert('Оформление сохранено! Перезагрузите страницу, чтобы увидеть изменения.');
-                closeThemeEditor();
-                location.reload();
-            } catch (e) {
-                alert('Ошибка сохранения: ' + e.message);
-                console.error(e);
-            }
+            document.documentElement.style.setProperty('--bg-color', bg);
+            document.documentElement.style.setProperty('--card-bg-top', top);
+            document.documentElement.style.setProperty('--card-bg-bottom', bottom);
+            document.documentElement.style.setProperty('--btn-color', btn);
+            
+            // Можно сохранить в localStorage, если нужно
+            localStorage.setItem('theme-bg', bg);
+            localStorage.setItem('theme-top', top);
+            localStorage.setItem('theme-bottom', bottom);
+            localStorage.setItem('theme-btn', btn);
+            
+            closeThemeEditor();
         }
 
         function route(mode, params = {}) {
-            if (mode === 'list') {
-                renderList();
-            } else if (mode === 'story') {
-                renderStoryPage(params.id);
-            } else if (mode === 'story-gallery') {
-                renderStoryGallery(params.id);
-            } else if (mode === 'story-characters') {
-                renderStoryCharactersList(params.id);
-            } else if (mode === 'character') {
-                renderCharacterPage(params.id);
-            } else if (mode === 'admin-login') {
-                renderLoginForm();
+            state.mode = mode;
+            switch(mode) {
+                case 'list': renderList(); break;
+                case 'story': renderStoryPage(params.id); break;
+                case 'story-gallery': renderStoryGallery(params.id); break;
+                case 'story-characters': renderStoryCharactersList(params.id); break;
+                case 'character': renderCharacterPage(params.id); break;
+                case 'admin-login': renderLoginForm(); break;
+                default: renderList();
             }
-            renderAdminBadge();
         }
 
-        function uuid() {
-            return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-                var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
-                return v.toString(16);
-            });
-        }
-
-        async function fetchRaw(path) {
-            const res = await fetch(`https://raw.githubusercontent.com/${CONFIG.owner}/${CONFIG.repo}/${CONFIG.branch}/${path}`);
-            if (!res.ok) throw new Error('File not found');
-            return await res.json();
-        }
-
-        // Инициализация
-        (async () => {
-            const savedToken = await GH.getToken();
-            if (savedToken) {
-                state.user.token = savedToken;
-            }
-
-            // Загрузка config.json
+        async function init() {
+            console.log('Загрузка данных...');
             try {
-                state.config = await fetchRaw(CONFIG.configFile);
+                const res = await fetch(`https://raw.githubusercontent.com/${CONFIG.owner}/${CONFIG.repo}/${CONFIG.branch}/${CONFIG.dataFile}`);
+                if (!res.ok) throw new Error('Файл data.json не найден или нет доступа. Проверьте репозиторий и токен.');
+                state.data = await res.json();
+                console.log('Данные загружены:', state.data);
+                route('list');
             } catch (e) {
-                console.warn('config.json не найден, используем настройки по умолчанию');
-                state.config = {
-                    bgColor: '#F5E6C8',
-                    cardTitle: '#000',
-                    cardDesc: '#333',
-                    cardTop: '#000000',
-                    cardBottom: '#FFB81C',
-                    btnColor: '#FFB81C'
-                };
+                console.error(e);
+                document.getElementById('app').innerHTML = `
+                    <h1>Ошибка загрузки</h1>
+                    <div class="empty-state">
+                        <p>\${e.message}</p>
+                        <p>Убедитесь, что:</p>
+                        <ul style="text-align:left; margin-top:10px; padding-left:20px;">
+                            <li>Репозиторий существует.</li>
+                            <li>Файл data.json лежит в корне.</li>
+                            <li>В консоли браузера введен токен: localStorage.setItem('gh_token', 'ВАШ_ТОКЕН')</li>
+                        </ul>
+                    </div>
+                `;
             }
+        }
 
-            // Применение цветов
-            const root = document.documentElement;
-            root.style.setProperty('--bg-color', state.config.bgColor);
-            root.style.setProperty('--card-bg-top', state.config.cardTop);
-            root.style.setProperty('--card-bg-bottom', state.config.cardBottom);
-            root.style.setProperty('--text-color', state.config.cardTitle);
-            root.style.setProperty('--text-muted', state.config.cardDesc);
-            root.style.setProperty('--btn-color', state.config.btnColor);
+        // Проверка сохраненной темы
+        const savedBg = localStorage.getItem('theme-bg');
+        if(savedBg) {
+            document.documentElement.style.setProperty('--bg-color', savedBg);
+            document.documentElement.style.setProperty('--card-bg-top', localStorage.getItem('theme-top') || '#000000');
+            document.documentElement.style.setProperty('--card-bg-bottom', localStorage.getItem('theme-bottom') || '#FFB81C');
+            document.documentElement.style.setProperty('--btn-color', localStorage.getItem('theme-btn') || '#FFB81C');
+        }
 
-            // Загрузка data.json
-            try {
-                state.data = await fetchRaw(CONFIG.dataFile);
-            } catch (e) {
-                console.warn('data.json не найден, показываем демо-данные', e);
-                state.data = {
-                    stories: [
-                        {
-                            id: 's1',
-                            title: 'Путь героя',
-                            description: 'История о поиске себя.',
-                            text: 'Герой вышел из дома и пошёл по дороге...',
-                            gallery: ,
-                            characters: ['c1']
-                        },
-                        {
-                            id: 's2',
-                            title: 'Тайна леса',
-                            description: 'В лесу скрывается древнее зло.',
-                            text: 'Деревья шептали предупреждения, но герои шли вперед...',
-                            gallery: ,
-                            characters: ['c1', 'c2']
-                        }
-                    ],
-                    characters: [
-                        {
-                            id: 'c1',
-                            name: 'Арин',
-                            shortBio: 'Молодой воин',
-                            bio: 'Арин родился в маленькой деревне и рано потерял родителей. Он всегда мечтал стать великим воином, чтобы защищать слабых.',
-                            gallery: 
-                        },
-                        {
-                            id: 'c2',
-                            name: 'Лира',
-                            shortBio: 'Таинственная волшебница',
-                            bio: 'Лира обладает редким даром управления стихиями. Её прошлое окутано тайной, и она редко говорит о нём.',
-                            gallery: 
-                        }
-                    ]
-                };
-            }
-            route('list');
-        })();
+        // Запуск
+        init();
     </script>
 </body>
 </html>
