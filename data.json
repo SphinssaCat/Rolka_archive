@@ -1,21 +1,75 @@
 {
   "stories": [
     {
-      "id": "mvcm9bbpti94t",
-      "title": "Ррамр",
-      "description": "Рнепшщщл",
-      "text": "......",
-      "photos": [],
-      "preview": ""
+      "id": "1",
+      "title": "Сюжет 1 (Галерея + Персонажи)",
+      "description": "Первый сюжет с медиа и героями",
+      "text": "Текст первого сюжета...",
+      "gallery": ["https://via.placeholder.com/300x200?text=Gallery+1"],
+      "characters": ["1", "2"]
     },
     {
-      "id": "mvdha0lanfugz",
-      "title": "Сюжет",
-      "description": "Описание",
-      "text": "Текст",
-      "photos": [
-        "https://raw.githubusercontent.com/SphinssaCat/Rolka_archive/main/images/mvdh9rex5irv6.jpg"
-      ]
+      "id": "2",
+      "title": "Сюжет 2 (Галерея + Персонажи)",
+      "description": "Второй сюжет",
+      "text": "Текст второго сюжета...",
+      "gallery": ["https://via.placeholder.com/300x200?text=Gallery+2"],
+      "characters": ["3"]
+    },
+    {
+      "id": "3",
+      "title": "Сюжет 3",
+      "description": "Простой сюжет без вложений",
+      "text": "Текст третьего сюжета...",
+      "gallery": ,
+      "characters": 
+    },
+    {
+      "id": "4",
+      "title": "Сюжет 4",
+      "description": "Еще один сюжет",
+      "text": "Текст четвертого сюжета...",
+      "gallery": ,
+      "characters": 
+    },
+    {
+      "id": "5",
+      "title": "Сюжет 5",
+      "description": "Пятый сюжет",
+      "text": "Текст пятого сюжета...",
+      "gallery": ,
+      "characters": 
+    },
+    {
+      "id": "6",
+      "title": "Сюжет 6",
+      "description": "Шестой сюжет",
+      "text": "Текст шестого сюжета...",
+      "gallery": ,
+      "characters": 
+    }
+  ],
+  "characters": [
+    {
+      "id": "1",
+      "name": "Персонаж 1",
+      "shortBio": "Краткая биография 1",
+      "bio": "Полная биография персонажа 1",
+      "gallery": ["https://via.placeholder.com/150?text=Char+1"]
+    },
+    {
+      "id": "2",
+      "name": "Персонаж 2",
+      "shortBio": "Краткая биография 2",
+      "bio": "Полная биография персонажа 2",
+      "gallery": 
+    },
+    {
+      "id": "3",
+      "name": "Персонаж 3",
+      "shortBio": "Краткая биография 3",
+      "bio": "Полная биография персонажа 3",
+      "gallery": 
     }
   ]
 }
