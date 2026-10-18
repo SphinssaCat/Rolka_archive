@@ -120,7 +120,8 @@
         }
         .form-box input[type="text"],
         .form-box textarea,
-        .form-box input[type="password"] {
+        .form-box input[type="password"],
+        .form-box input[type="file"] {
             width: 100%;
             padding: 10px;
             border: 1px solid #ccc;
@@ -297,13 +298,14 @@
             user: { isAdmin: false, token: '' },
             editingId: null
         };
-        let tempPhotos = ; // ИСПРАВЛЕНО: было пустым
+        // ИСПРАВЛЕНО: инициализируем пустой массив, а не синтаксическую ошибку
+        let tempPhotos = []; 
 
         const GH = {
             headers() {
                 const token = state.user.token || localStorage.getItem('gh_token');
                 return {
-                    'Authorization': `token \${token}`,
+                    'Authorization': `token ${token}`,
                     'Content-Type': 'application/json'
                 };
             },
@@ -315,16 +317,15 @@
                     const reader = new FileReader();
                     reader.onload = async (e) => {
                         try {
-                            // ИСПРАВЛЕНО: убрана ссылка и исправлена логика base64
-                            const base64Data = e.target.result.split(','); [1](https://tr-page.yandex.ru/translate?lang=en-ru&url=https%3A%2F%2Fwww.geeksforgeeks.org%2Fnode-js%2Fhow-to-handle-syntax-errors-in-node-js%2F)
-                            const content = btoa(base64Data);
+                            // ИСПРАВЛЕНО: берем часть после запятой и используем её как base64
+                            const base64Data = e.target.result.split(',')[1];
                             const path = `images/${Date.now()}_${file.name}`;
                             const payload = {
                                 message: 'Upload image',
-                                content: content,
+                                content: base64Data,
                                 branch: CONFIG.branch
                             };
-                            const res = await fetch(`https://api.github.com/repos/${CONFIG.owner}/${CONFIG.repo}/contents/\${path}`, {
+                            const res = await fetch(`https://api.github.com/repos/${CONFIG.owner}/${CONFIG.repo}/contents/${path}`, {
                                 method: 'PUT',
                                 headers: this.headers(),
                                 body: JSON.stringify(payload)
@@ -342,7 +343,8 @@
                 });
             },
             async updateFile(path, content) {
-                const res = await fetch(`https://api.github.com/repos/${CONFIG.owner}/${CONFIG.repo}/contents/\${path}`, { headers: this.headers() });
+                // Сначала получаем текущую версию файла, чтобы получить SHA
+                const res = await fetch(`https://api.github.com/repos/${CONFIG.owner}/${CONFIG.repo}/contents/${path}`, { headers: this.headers() });
                 if (!res.ok && res.status !== 404) throw new Error('Cannot get file info');
                 const info = res.status === 404 ? null : await res.json();
 
@@ -353,7 +355,7 @@
                 };
                 if (info) payload.sha = info.sha;
 
-                const putRes = await fetch(`https://api.github.com/repos/${CONFIG.owner}/${CONFIG.repo}/contents/\${path}`, {
+                const putRes = await fetch(`https://api.github.com/repos/${CONFIG.owner}/${CONFIG.repo}/contents/${path}`, {
                     method: 'PUT',
                     headers: this.headers(),
                     body: JSON.stringify(payload)
@@ -378,8 +380,8 @@
 
         function renderGallery(images) {
             if (!images || images.length === 0) return '';
-            const html = images.map(img => `<img src="\${img}" alt="" class="gallery-img">`).join('');
-            return `<div class="gallery-grid">\${html}</div>`;
+            const html = images.map(img => `<img src="${img}" alt="" class="gallery-img">`).join('');
+            return `<div class="gallery-grid">${html}</div>`;
         }
 
         function renderAdminBadge() {
@@ -395,7 +397,7 @@
                 container.innerHTML = `
                     <div style="display:flex; gap:10px; align-items:center;">
                         <span style="font-family:var(--font-display); color:var(--text-color); text-transform:uppercase;">👑 Админ</span>
-                        <button onclick="openThemeEditor()" class="btn" style="padding:5px 15px; font-size:0.8rem;">🎨 Оформление</button>
+                        <button onclick="openThemeEditor()" class="btn" style="padding:5px 15px; font-size:0.8rem;">🎨 Оформление                        <button onclick="openThemeEditor()" class="btn" style="padding:5px 15px; font-size:0.8rem;">🎨 Оформление</button>
                         <button onclick="logout()" class="btn btn-danger" style="padding:5px 15px; font-size:0.8rem;">Выйти</button>
                     </div>
                 `;
@@ -416,9 +418,9 @@
                 const grid = document.createElement('div');
                 grid.className = 'cards-grid';
                 grid.innerHTML = state.data.stories.map(s => `
-                    <div class="card" onclick="route('story', {id:'\${s.id}'})">
-                        <h3>\${escapeHtml(s.title)}</h3>
-                        <p>\${escapeHtml(s.description)}</p>
+                    <div class="card" onclick="route('story', {id:'${s.id}'})">
+                        <h3>${escapeHtml(s.title)}</h3>
+                        <p>${escapeHtml(s.description)}</p>
                     </div>
                 `).join('');
                 app.appendChild(grid);
@@ -448,68 +450,68 @@
         }
 
         function renderStoryPage(id) {
-            const story = (state.data?.stories || ).find(s => s.id === id);
+            const story = (state.data?.stories || []).find(s => s.id === id);
             if (!story) return route('list');
 
             document.getElementById('app').innerHTML = `
                 <button class="back-btn" onclick="route('list')">← Назад</button>
-                <h1>\${escapeHtml(story.title)}</h1>
-                <p><strong>Описание:</strong> \${escapeHtml(story.description)}</p>
-                <div>\${formatDescription(story.text)}</div>
+                <h1>${escapeHtml(story.title)}</h1>
+                <p><strong>Описание:</strong> ${escapeHtml(story.description)}</p>
+                <div>${formatDescription(story.text)}</div>
 
                 <div style="margin-top:30px; display:flex; gap:15px;">
-                    <button class="btn" onclick="route('story-gallery', {id:'\${id}'})">🖼 Галерея</button>
-                    <button class="btn" onclick="route('story-characters', {id:'\${id}'})">👤 Персонажи</button>
+                    <button class="btn" onclick="route('story-gallery', {id:'${id}'})">🖼 Галерея</button>
+                    <button class="btn" onclick="route('story-characters', {id:'${id}'})">👤 Персонажи</button>
                 </div>
 
-                \${renderGallery(story.gallery || )}
+                ${renderGallery(story.gallery || [])}
             `;
         }
 
         function renderStoryGallery(id) {
-            const story = (state.data?.stories || ).find(s => s.id === id);
+            const story = (state.data?.stories || []).find(s => s.id === id);
             if (!story) return route('list');
 
             document.getElementById('app').innerHTML = `
-                <button class="back-btn" onclick="route('story', {id:'\${id}'})">← Назад к сюжету</button>
-                <h1>\${escapeHtml(story.title)} — Галерея</h1>
-                \${renderGallery(story.gallery || )}
+                <button class="back-btn" onclick="route('story', {id:'${id}'})">← Назад к сюжету</button>
+                <h1>${escapeHtml(story.title)} — Галерея</h1>
+                ${renderGallery(story.gallery || [])}
             `;
         }
 
         function renderStoryCharactersList(storyId) {
-            const story = (state.data?.stories || ).find(s => s.id === storyId);
+            const story = (state.data?.stories || []).find(s => s.id === storyId);
             if (!story) return route('list');
 
-            const chars = (state.data?.characters || ).filter(c => story.characters && story.characters.includes(c.id));
+            const chars = (state.data?.characters || []).filter(c => story.characters && story.characters.includes(c.id));
 
             const cards = chars.length
                 ? chars.map(c => `
-                    <div class="card" onclick="route('character', {id:'\${c.id}'})">
-                        <h3>\${escapeHtml(c.name)}</h3>
-                        <p>\${escapeHtml(c.shortBio || '')}</p>
+                    <div class="card" onclick="route('character', {id:'${c.id}'})">
+                        <h3>${escapeHtml(c.name)}</h3>
+                        <p>${escapeHtml(c.shortBio || '')}</p>
                     </div>
                   `).join('')
                 : '<p>Персонажей нет.</p>';
 
             document.getElementById('app').innerHTML = `
-                <button class="back-btn" onclick="route('story', {id:'\${storyId}'})">← Назад к сюжету</button>
-                <h1>\${escapeHtml(story.title)} — Персонажи</h1>
-                <div class="cards-grid">\${cards}</div>
+                <button class="back-btn" onclick="route('story', {id:'${storyId}'})">← Назад к сюжету</button>
+                <h1>${escapeHtml(story.title)} — Персонажи</h1>
+                <div class="cards-grid">${cards}</div>
             `;
         }
 
         function renderCharacterPage(id) {
-            const char = (state.data?.characters || ).find(c => c.id === id);
+            const char = (state.data?.characters || []).find(c => c.id === id);
             if (!char) return route('list');
 
             document.getElementById('app').innerHTML = `
                 <button class="back-btn" onclick="history.back()">← Назад</button>
-                <h1>\${escapeHtml(char.name)}</h1>
+                <h1>${escapeHtml(char.name)}</h1>
                 <p><strong>Биография:</strong></p>
-                <div>\${formatDescription(char.bio)}</div>
+                <div>${formatDescription(char.bio)}</div>
                 <h2>Галерея персонажа</h2>
-                \${renderGallery(char.gallery || )}
+                ${renderGallery(char.gallery || [])}
             `;
         }
 
@@ -556,24 +558,24 @@
             const app = document.getElementById('app');
             app.innerHTML = `
                 <button class="back-btn" onclick="route('list')">← Назад</button>
-                <h1 style="font-family:var(--font-display);">\${story ? 'Редактировать' : 'Новый сюжет'}</h1>
+                <h1 style="font-family:var(--font-display);">${story ? 'Редактировать' : 'Новый сюжет'}</h1>
                 <div class="form-box">
                     <label>Название</label>
-                    <input type="text" id="edit-title" value="\${story ? escapeHtml(story.title) : ''}">
+                    <input type="text" id="edit-title" value="${story ? escapeHtml(story.title) : ''}">
                     
                     <label>Описание (короткое)</label>
-                    <input type="text" id="edit-desc" value="\${story ? escapeHtml(story.description) : ''}">
+                    <input type="text" id="edit-desc" value="${story ? escapeHtml(story.description) : ''}">
                     
                     <label>Текст сюжета</label>
-                    <textarea id="edit-text">\${story ? escapeHtml(story.text) : ''}</textarea>
+                    <textarea id="edit-text">${story ? escapeHtml(story.text) : ''}</textarea>
                     
                     <label>Галерея (URL картинок через запятую)</label>
-                    <input type="text" id="edit-gallery" value="\${story && story.gallery ? story.gallery.join(',') : ''}" placeholder="https://..., https://...">
+                    <input type="text" id="edit-gallery" value="${story && story.gallery ? story.gallery.join(',') : ''}" placeholder="https://..., https://...">
                     
                     <label>Персонажи (ID персонажей через запятую)</label>
-                    <input type="text" id="edit-chars" value="\${story && story.characters ? story.characters.join(',') : ''}" placeholder="1, 2, 3">
+                    <input type="text" id="edit-chars" value="${story && story.characters ? story.characters.join(',') : ''}" placeholder="1, 2, 3">
                     
-                    <button class="btn" onclick="saveStory('\${story ? story.id : ''}')">Сохранить</button>
+                    <button class="btn" onclick="saveStory('${story ? story.id : ''}')">Сохранить</button>
                     ${story ? `<button class="btn btn-danger" onclick="deleteStory('${story.id}')">Удалить</button>` : ''}
                 </div>
             `;
@@ -588,8 +590,8 @@
 
             if (!title) return alert('Введите название');
 
-            const gallery = galleryInput ? galleryInput.split(',').map(c => c.trim()).filter(Boolean) : ;
-            const characters = charsInput ? charsInput.split(',').map(c => c.trim()).filter(Boolean) : ;
+            const gallery = galleryInput ? galleryInput.split(',').map(c => c.trim()).filter(Boolean) : [];
+            const characters = charsInput ? charsInput.split(',').map(c => c.trim()).filter(Boolean) : [];
 
             const newStory = {
                 id: id || Date.now().toString(),
@@ -654,7 +656,6 @@
             document.documentElement.style.setProperty('--card-bg-bottom', bottom);
             document.documentElement.style.setProperty('--btn-color', btn);
             
-            // Можно сохранить в localStorage, если нужно
             localStorage.setItem('theme-bg', bg);
             localStorage.setItem('theme-top', top);
             localStorage.setItem('theme-bottom', bottom);
@@ -689,7 +690,7 @@
                 document.getElementById('app').innerHTML = `
                     <h1>Ошибка загрузки</h1>
                     <div class="empty-state">
-                        <p>\${e.message}</p>
+                        <p>${e.message}</p>
                         <p>Убедитесь, что:</p>
                         <ul style="text-align:left; margin-top:10px; padding-left:20px;">
                             <li>Репозиторий существует.</li>
