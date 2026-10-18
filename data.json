@@ -7,6 +7,15 @@
       "text": "......",
       "photos": [],
       "preview": ""
+    },
+    {
+      "id": "mvdha0lanfugz",
+      "title": "Сюжет",
+      "description": "Описание",
+      "text": "Текст",
+      "photos": [
+        "https://raw.githubusercontent.com/SphinssaCat/Rolka_archive/main/images/mvdh9rex5irv6.jpg"
+      ]
     }
   ]
 }
